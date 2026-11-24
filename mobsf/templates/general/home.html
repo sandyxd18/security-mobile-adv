@@ -88,7 +88,7 @@
                 }
                 // Stay on this page while the report request runs the scan.
                 // Navigating now freezes the last upload line for the whole analysis.
-                var url = json.analyzer + '/' + json.hash + '/';
+                var url = '/' + json.analyzer + '/' + json.hash + '/';
                 analysisStarted = true;
                 statusPrefix = "";
                 _("status").innerText = asyncScans ? "Queueing scan ..." : "Analyzing ...";
@@ -184,7 +184,7 @@
                 for (var i = 0; i < total; i++) {
                     var item = results[i];
                     var label = item.file_name || item.hash;
-                    var url = item.analyzer + '/' + item.hash + '/';
+                    var url = '/' + item.analyzer + '/' + item.hash + '/';
                     _("progressBar").value = Math.round(((i + 1) / total) * 100);
                     if (asyncScans) {
                         statusPrefix = "";

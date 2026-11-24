@@ -21,8 +21,8 @@ ENV DEBIAN_FRONTEND=noninteractive \
     JAVA_HOME=/jdk-27.0.1.1 \
     JAVA_TOOL_OPTIONS=-XX:-UseBASE64Intrinsics \
     PATH=/jdk-27.0.1.1/bin:/root/.local/bin:$PATH \
-    DJANGO_SUPERUSER_USERNAME=mobsf \
-    DJANGO_SUPERUSER_PASSWORD=mobsf
+    DJANGO_SUPERUSER_USERNAME=hacker \
+    DJANGO_SUPERUSER_PASSWORD=hacker
 
 ARG TARGETPLATFORM
 
