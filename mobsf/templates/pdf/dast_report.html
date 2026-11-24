@@ -1,0 +1,382 @@
+{% load static %}
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>MobSF Dynamic Analysis Report</title>
+    <meta name="description" content="MobSF Dynamic Analysis Report">
+    <style>
+      @font-face {
+        font-family: 'Open Sans';
+        src: url('{{base_url}}{% static 'fonts/Open_Sans/OpenSans-Regular.ttf' %}');
+      }
+      @font-face {
+        font-family: 'Oswald';
+        src: url('{{base_url}}{% static 'fonts/Oswald/Oswald-Regular.ttf' %}');
+      }
+      @font-face {
+        font-family: 'FontAwesomeSolid';
+        src: url('{{base_url}}{% static 'adminlte/plugins/fontawesome-free/webfonts/fa-solid-900.ttf' %}');
+      }
+      @font-face {
+        font-family: 'FontAwesomeBrands';
+        src: url('{{base_url}}{% static 'adminlte/plugins/fontawesome-free/webfonts/fa-brands-400.ttf' %}');
+      }
+      .muted { color: #6c757d; }
+      .small { font-size: 8pt; }
+    </style>
+    <link rel="stylesheet" href="{{base_url}}{% static "others/css/pdf_report.css" %}">
+  </head>
+
+  <body bgcolor="FFFFFF">
+    <article id="cover">
+      <div class="header">
+        <img src="{{base_url}}{% static "img/mobsf_logo.png" %}" class="center logo" alt="MobSF Logo"/>
+        <div class="htext">ANDROID DYNAMIC ANALYSIS REPORT</div>
+      </div>
+      <div class="center">
+        <h1><span class="fab">&#xf17b;</span>  {{ package }}</h1>
+      </div>
+      <div class="container">
+        <table class="basic no_border">
+          <tr class="no_border">
+            <td width="30%" class="no_border"><h3>Package Name:</h3></td>
+            <td width="70%" class="no_border"><h3>{{ package }}</h3></td>
+          </tr>
+          <tr>
+            <td class="no_border"><h3>MD5:</h3></td>
+            <td class="no_border"><h3>{{ hash }}</h3></td>
+          </tr>
+          <tr>
+            <td class="no_border"><h3>Report Date:</h3></td>
+            <td class="no_border"><h3>{{ timestamp }}</h3></td>
+          </tr>
+          <tr>
+            <td class="no_border"><h3>TLS/SSL Tests:</h3></td>
+            <td class="no_border"><h3>
+              {% if not tls_tests %}<span class="secondary">Not Tested</span>
+              {% elif tls_failed %}<span class="danger">{{ tls_failed }} of 4 failed</span>
+              {% else %}<span class="success">All 4 passed</span>{% endif %}
+            </h3></td>
+          </tr>
+        </table>
+
+        <h2><span class="fas">&#xf200;</span>  SUMMARY</h2>
+        <table class="basic tbl-white">
+          <tr>
+            <th width="20%" class="td-high"><span class="fas">&#xf188;</span>  MALWARE DOMAINS</th>
+            <th width="20%" class="td-warning"><span class="fas">&#xf1e0;</span>  TRACKERS</th>
+            <th width="20%" class="td-info"><span class="fas">&#xf0ac;</span>  DOMAINS</th>
+            <th width="20%" class="td-success"><span class="fas">&#xf0c1;</span>  URLS</th>
+            <th width="20%" class="td-secondary"><span class="fas">&#xf0e0;</span>  EMAILS</th>
+          </tr>
+          <tr>
+            <td class="td-high"><h2>{{ bad_domains }}</h2></td>
+            <td class="td-warning"><h2>{% if trackers %}{{ trackers.detected_trackers }}{% else %}0{% endif %}</h2></td>
+            <td class="td-info"><h2>{{ domains|length }}</h2></td>
+            <td class="td-success"><h2>{{ urls|length }}</h2></td>
+            <td class="td-secondary"><h2>{{ emails|length }}</h2></td>
+          </tr>
+        </table>
+      </div>
+      <div class="page-break"></div>
+    </article>
+
+    <article id="contents">
+
+      <h2><span class="fas">&#xf023;</span>  TLS/SSL SECURITY TESTER</h2>
+      {% if tls_tests %}
+      <table class="basic">
+        <thead>
+          <tr>
+            <th width="70%">TEST CASE</th>
+            <th width="30%">RESULT</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Cleartext Traffic Test</td>
+            <td>{% if tls_tests.has_cleartext == True %}<span class="danger">FAILED</span>{% else %}<span class="success">PASSED</span>{% endif %}</td>
+          </tr>
+          <tr>
+            <td>TLS Misconfiguration Test</td>
+            <td>{% if tls_tests.tls_misconfigured == True %}<span class="danger">FAILED</span>{% else %}<span class="success">PASSED</span>{% endif %}</td>
+          </tr>
+          <tr>
+            <td>TLS Pinning/Certificate Transparency Test</td>
+            <td>{% if tls_tests.no_tls_pin_or_transparency == True %}<span class="danger">FAILED</span>{% else %}<span class="success">PASSED</span>{% endif %}</td>
+          </tr>
+          <tr>
+            <td>TLS Pinning/Certificate Transparency Bypass Test</td>
+            <td>{% if tls_tests.pin_or_transparency_bypassed == True %}<span class="danger">FAILED</span>{% else %}<span class="success">PASSED</span>{% endif %}</td>
+          </tr>
+        </tbody>
+      </table>
+      {% else %}
+      <p class="muted">TLS/SSL Security Tester was not run for this app.</p>
+      {% endif %}
+
+      <h2><span class="fas">&#xf0ac;</span>  DOMAIN MALWARE CHECK</h2>
+      {% if domains %}
+      <table class="basic">
+        <thead>
+          <tr>
+            <th width="35%">DOMAIN</th>
+            <th width="30%">STATUS</th>
+            <th width="35%">GEOLOCATION</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for domain, details in domains|malware_first %}
+          <tr>
+            <td class="wrapped-text">{{ domain }}</td>
+            <td>
+              {% if details|key:"bad" == "yes" %}
+              <span class="danger">malware</span><br/>
+              <span class="small">URL: {{ details|key:"domain_or_url" }}<br/>IP: {{ details|key:"ip" }}<br/>{{ details|key:"desc" }}</span>
+              {% else %}
+              <span class="success">ok</span>
+              {% endif %}
+            </td>
+            <td class="small">
+              {% with geo=details|key:"geolocation" %}
+              {% if geo %}{{ geo|key:"ip" }}<br/>{% if geo|key:"city" %}{{ geo|key:"city" }}, {% endif %}{% if geo|key:"region" and geo|key:"region" != geo|key:"city" %}{{ geo|key:"region" }}, {% endif %}{{ geo|key:"country_long" }}{% if details|key:"ofac" %}<br/><span class="danger">OFAC sanctioned country</span>{% endif %}
+              {% else %}<span class="muted">No geolocation information</span>{% endif %}
+              {% endwith %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="muted">No domains observed.</p>
+      {% endif %}
+
+      <h2><span class="fas">&#xf0c1;</span>  URLS</h2>
+      {% if urls %}
+      <table class="basic">
+        <tbody>
+          {% for url in urls %}
+          <tr><td class="wrapped-text">{{ url }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="muted">No URLs observed.</p>
+      {% endif %}
+
+      <h2><span class="fas">&#xf0e0;</span>  EMAILS</h2>
+      {% if emails %}
+      <table class="basic">
+        <tbody>
+          {% for email in emails %}
+          <tr><td class="wrapped-text">{{ email }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="muted">No emails observed.</p>
+      {% endif %}
+
+      <h2><span class="fas">&#xf328;</span>  CLIPBOARD DUMP</h2>
+      {% if clipboard %}
+      <table class="basic">
+        <tbody>
+          {% for item in clipboard %}
+          <tr><td class="wrapped-text">{{ item|truncatechars:500 }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="muted">No clipboard data captured.</p>
+      {% endif %}
+
+      <h2><span class="fas">&#xf1e0;</span>  TRACKERS</h2>
+      {% if trackers and trackers.trackers %}
+      <p>{{ trackers.detected_trackers }} tracker(s) detected out of {{ trackers.total_trackers }} known trackers.</p>
+      <table class="basic">
+        <thead>
+          <tr>
+            <th width="35%">TRACKER NAME</th>
+            <th width="30%">CATEGORIES</th>
+            <th width="35%">URL</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for trk in trackers.trackers %}
+          <tr>
+            <td>{{ trk.name }}</td>
+            <td>{{ trk.categories }}</td>
+            <td class="wrapped-text small">{{ trk.url }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="muted">No trackers detected.</p>
+      {% endif %}
+
+      <h2><span class="fas">&#xf1b3;</span>  RUNTIME DEPENDENCIES</h2>
+      {% if runtime_dependencies %}
+      <table class="basic">
+        <tbody>
+          {% for dep in runtime_dependencies %}
+          <tr><td class="wrapped-text">{{ dep }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="muted">No runtime dependencies collected.</p>
+      {% endif %}
+
+      {% if base64_strings %}
+      <h2><span class="fas">&#xf12e;</span>  BASE64 STRINGS DECODED</h2>
+      <table class="basic">
+        <thead>
+          <tr>
+            <th width="40%">CALLED</th>
+            <th width="60%">DECODED STRING</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for details in base64_strings %}
+          <tr>
+            <td class="wrapped-text small">{{ details.0 }}</td>
+            <td class="wrapped-text small">{{ details.1|truncatechars:500 }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+
+      {% if apimon %}
+      <h2><span class="fas">&#xf3cd;</span>  FRIDA API MONITOR</h2>
+      <p class="muted">Calls made by app code, up to {{ apimon_limit }} per category. Framework-internal calls are counted but not listed.</p>
+      {% for api, details in apimon.items %}
+      <h3>{{ api|upper }} ({{ details.unique_total }} unique call{{ details.unique_total|pluralize }}{% if details.framework %}, {{ details.framework }} framework-internal{% endif %})</h3>
+      {% if details.calls %}
+      {% if details.app_total > apimon_limit %}<p class="muted">Showing {{ apimon_limit }} of {{ details.app_total }} app calls.</p>{% endif %}
+      <table class="basic">
+        <thead>
+          <tr>
+            <th width="34%">API</th>
+            <th width="33%">ARGUMENTS</th>
+            <th width="25%">RETURN VALUE</th>
+            <th width="8%">COUNT</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for call in details.calls %}
+          <tr>
+            <td class="wrapped-text small">{{ call|key:"api" }}<br/><span class="muted">{{ call|key:"class" }}</span></td>
+            <td class="wrapped-text small">{% for arg in call|key:"arguments" %}{{ forloop.counter0 }}: {{ arg|truncatechars:200 }}<br/>{% empty %}<span class="muted">(none)</span>{% endfor %}</td>
+            <td class="wrapped-text small">{% if call|key:"exception" %}<span class="danger">threw {{ call|key:"exception"|truncatechars:200 }}</span>{% elif call|key:"returnValue" is not None %}{{ call|key:"returnValue"|truncatechars:200 }}{% endif %}</td>
+            <td class="small">{{ call|key:"count" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="muted">All calls in this category were made by Android or WebView internals.</p>
+      {% endif %}
+      {% endfor %}
+      {% endif %}
+
+      {% if droidmon %}
+      <h2><span class="fas">&#xf3cd;</span>  XPOSED API MONITOR</h2>
+      {% for api, details in droidmon.items %}
+      <h3>{{ details|key:"name" }}</h3>
+      <table class="basic">
+        <thead>
+          <tr>
+            <th width="40%">CLASS</th>
+            <th width="60%">METHOD</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for call in details|key:"calls"|slice:":100" %}
+          <tr>
+            <td class="wrapped-text small">{{ call|key:"class" }}</td>
+            <td class="wrapped-text small">{{ call|key:"method" }}{% if call|key:"args" %}<br/>Arguments: {{ call|key:"args"|truncatechars:300 }}{% endif %}{% if call|key:"decoded" %}<br/>Decoded: {{ call|key:"decoded"|truncatechars:300 }}{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endfor %}
+      {% endif %}
+
+      <h2><span class="fas">&#xf24d;</span>  ACTIVITY TESTER</h2>
+      {% if exported_activity_tester %}
+      <h3>Exported Activities</h3>
+      <table class="basic">
+        <tbody>
+          {% for img, activity in exported_activity_tester.items %}
+          <tr><td class="wrapped-text">{{ activity }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+      {% if activity_tester %}
+      <h3>All Activities</h3>
+      <table class="basic">
+        <tbody>
+          {% for img, activity in activity_tester.items %}
+          <tr><td class="wrapped-text">{{ activity }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+      {% if not activity_tester and not exported_activity_tester %}
+      <p class="muted">Activity Tester was not run for this app.</p>
+      {% endif %}
+      <p class="muted">Screenshots captured: {{ screenshots|length }}. They are available in the web report.</p>
+
+      <h2><span class="fas">&#xf07c;</span>  APPLICATION FILES</h2>
+      {% if sqlite %}
+      <h3>SQLite Databases</h3>
+      <table class="basic">
+        <tbody>
+          {% for file in sqlite %}
+          <tr><td class="wrapped-text">{{ file|key:"file" }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+      {% if xml %}
+      <h3>XML Files</h3>
+      <table class="basic">
+        <tbody>
+          {% for file in xml %}
+          <tr><td class="wrapped-text">{{ file|key:"file" }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+      {% if others %}
+      <h3>Other Files</h3>
+      <table class="basic">
+        <tbody>
+          {% for file in others %}
+          <tr><td class="wrapped-text">{{ file|key:"file" }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+      {% if not sqlite and not xml and not others %}
+      <p class="muted">No application files collected.</p>
+      {% endif %}
+    </article>
+
+    <article id="columns">
+      <br/>
+      <hr>
+      <h3>Report Generated by - MobSF {{ version }}</h3>
+      <section>
+        <p>
+          Mobile Security Framework (MobSF) is an automated, all-in-one mobile application (Android/iOS/Windows) pen-testing, malware analysis and security assessment framework capable of performing static and dynamic analysis.
+        </p>
+        <p>This report contains sensitive security analysis information. Handle with care.</p>
+      </section>
+    </article>
+  </body>
+</html>

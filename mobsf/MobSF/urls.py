@@ -6,6 +6,7 @@ from mobsf.DynamicAnalyzer.views.android import dynamic_analyzer as dz
 from mobsf.DynamicAnalyzer.views.android import (
     operations,
     report,
+    report_pdf,
     tests_common,
     tests_frida,
 )
@@ -214,7 +215,9 @@ urlpatterns = [
 if not settings.API_ONLY:
     urlpatterns.extend([
         # General
-        re_path(r'^$', home.index, name='home'),
+        # Landing page shows Recent Scans; the upload page moves to /analyze/
+        re_path(r'^$', home.recent_scans, name='landing'),
+        re_path(r'^analyze/$', home.index, name='home'),
         re_path(r'^upload/$', home.Upload.as_view, name='upload'),
         re_path(r'^download/', home.download, name='download'),
         re_path(fr'^download_binary/{checksum_regex}/$',
@@ -363,6 +366,9 @@ if not settings.API_ONLY:
         re_path(fr'^dynamic_report/{checksum_regex}$',
                 report.view_report,
                 name='dynamic_report'),
+        re_path(fr'^dynamic_pdf/{checksum_regex}/$',
+                report_pdf.pdf_report,
+                name='dynamic_pdf'),
         # Shared
         re_path(r'^list_frida_scripts/$',
                 frida.list_frida_scripts,
